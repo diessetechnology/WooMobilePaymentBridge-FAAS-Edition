@@ -9,10 +9,7 @@ module.exports = async (event, context) => {
         amount: price,
         currency: 'eur',
         payment_method_types: ['card'],
-        confirm: true,
-        confirmation_method: "automatic",
         receipt_email: event.body.receipt_email,
-        capture_method: "automatic"
     })
-    return {status: intent.status}
+    return {status: intent.id}
 }
