@@ -1,14 +1,6 @@
 "use strict"
-
-import axios from "axios"
 const stripe = require("stripe") (process.env.STRIPE_SECRET);
 module.exports = async (event, context) => {
-
-    const woo = axios.create({
-        baseURL: 'https://www.apecalessinotaranto.it/',
-        timeout: 1000,
-        headers: {'X-Custom-Header': 'foobar'}
-    });
 
     const price =  ((event.body.amount)*100);
 
