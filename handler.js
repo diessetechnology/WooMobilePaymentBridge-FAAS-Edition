@@ -11,5 +11,5 @@ module.exports = async (event, context) => {
         payment_method_types: ['card'],
         receipt_email: event.body.receipt_email,
     })
-    return {status: intent.id}
+    return {secret: intent.client_secret}
 }
