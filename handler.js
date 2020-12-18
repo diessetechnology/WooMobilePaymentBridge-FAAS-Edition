@@ -10,8 +10,9 @@ module.exports = async (event, context) => {
         paymentMethod = event.body.paymentMethod
     }
     else {
-        var method = stripe.paymentMethods.create({card: {token: event.body.token}})
-        paymentMethod = method.id
+        await stripe.paymentMethods.create({card: {token: event.body.token}}).then((result) => {
+            paymentMethod = result.paymentMethod.id
+        });
     }
     console.log(paymentMethod)
     const intent = await stripe.paymentIntents.create({
