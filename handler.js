@@ -4,13 +4,13 @@ module.exports = async (event, context) => {
 
     const price =  ((event.body.amount)*100);
 
-    var paymentMethod;
+    let paymentMethod;
 
     if (event.body.token === "" || event.body.token == null || typeof event.body.token != "string"){
         paymentMethod = event.body.paymentMethod
     }
     else {
-        await stripe.paymentMethods.create({card: {token: event.body.token}}).then((result) => {
+        await stripe.paymentMethods.create({type: "card",card: {token: event.body.token}}).then((result) => {
             paymentMethod = result.paymentMethod.id
         });
     }
