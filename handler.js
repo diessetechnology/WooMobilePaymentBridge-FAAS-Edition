@@ -6,7 +6,7 @@ module.exports = async (event, context) => {
 
     var paymentMethod;
 
-    if (event.body.token === "" || event.body.token == null || typeof event.body.token != "string"){
+    if (event.body.token != "" || event.body.token != null || typeof event.body.token != "string"){
         paymentMethod = event.body.paymentMethod
     }
     else {
