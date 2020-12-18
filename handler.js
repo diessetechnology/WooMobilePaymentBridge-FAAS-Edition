@@ -6,14 +6,14 @@ module.exports = async (event, context) => {
 
     var paymentMethod;
 
-    if (event.body.token != "" || event.body.token != null || typeof event.body.token != "string"){
+    if (event.body.token === "" || event.body.token == null || typeof event.body.token != "string"){
         paymentMethod = event.body.paymentMethod
     }
     else {
         var method = await stripe.paymentMethods.create({card: {token: event.body.token}})
         paymentMethod = method.id
     }
-
+    console.log(paymentMethod)
     const intent = await stripe.paymentIntents.create({
         payment_method: paymentMethod,
         amount: price,
