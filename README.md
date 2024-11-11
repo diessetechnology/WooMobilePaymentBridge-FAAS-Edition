@@ -62,7 +62,7 @@ Follow these steps to deploy the payment processing function on OpenFaaS without
      --name mobilepaymentbridge \
      --image mobilepaymentbridge:latest \
      --gateway http://127.0.0.1:8080 \
-     --env STRIPE_API_KEY=your_stripe_api_key
+     --env STRIPE_SECRET=your_stripe_api_key
    ```
 
 6. **Invoke the Function**
