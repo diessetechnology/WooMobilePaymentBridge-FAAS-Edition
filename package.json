@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "stripe": "^20.4.1",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "@paypal/paypal-server-sdk": "^2.2.0"
   },
   "keywords": [],
   "author": "",

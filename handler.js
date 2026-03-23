@@ -56,6 +56,41 @@ function isProbablyPaymentMethodId(value) {
     return /^pm_/.test(v) || /^card_/.test(v);
 }
 
+let paypalClient;
+let paypalOrdersController;
+let paypalSdk;
+function getPaypalOrdersController() {
+    if (paypalClient && paypalOrdersController && paypalSdk) {
+        return { client: paypalClient, ordersController: paypalOrdersController, paypal: paypalSdk };
+    }
+    const id = process.env.PAYPAL_CLIENT_ID;
+    const secret = process.env.PAYPAL_CLIENT_SECRET;
+    if (typeof id !== "string" || !id.trim()) {
+        throw new Error("Missing PAYPAL_CLIENT_ID");
+    }
+    if (typeof secret !== "string" || !secret.trim()) {
+        throw new Error("Missing PAYPAL_CLIENT_SECRET");
+    }
+    paypalSdk = require("@paypal/paypal-server-sdk");
+    const envName = typeof process.env.PAYPAL_ENV === "string" ? process.env.PAYPAL_ENV.toLowerCase().trim() : "sandbox";
+    const environment = envName === "live" ? paypalSdk.Environment.Production : paypalSdk.Environment.Sandbox;
+    paypalClient = new paypalSdk.Client({
+        clientCredentialsAuthCredentials: {
+            oAuthClientId: id.trim(),
+            oAuthClientSecret: secret.trim()
+        },
+        environment
+    });
+    paypalOrdersController = new paypalSdk.OrdersController(paypalClient);
+    return { client: paypalClient, ordersController: paypalOrdersController, paypal: paypalSdk };
+}
+
+function toAmountString(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return (Math.round(n * 100) / 100).toFixed(2);
+}
+
 module.exports = async ({ req, res, log, error }) => {
     try {
         const body = parseJsonBody(req);
@@ -148,6 +183,51 @@ if (require.main === module) {
     });
     app.post("/create-payment-intent", callHandler);
     app.post("/intent", callHandler);
+    app.post("/paypal/create-order", async (req, res) => {
+        try {
+            const body = req.body || {};
+            const value = toAmountString(body.amount);
+            if (!value) return res.status(400).json({ error: "Invalid amount" });
+            const currency = typeof body.currency === "string" && body.currency.trim() ? body.currency.trim().toUpperCase() : "EUR";
+            const { ordersController, paypal } = getPaypalOrdersController();
+            const collect = {
+                body: {
+                    intent: paypal.CheckoutPaymentIntent.Capture,
+                    purchaseUnits: [{ amount: { currencyCode: currency, value } }]
+                },
+                prefer: "return=minimal"
+            };
+            const { result } = await ordersController.createOrder(collect);
+            return res.status(200).json({ id: result.id, status: result.status });
+        } catch (e) {
+            const paypal = paypalSdk;
+            if (paypal?.ApiError && e instanceof paypal.ApiError) {
+                const details = e.result;
+                const message = e.message || details?.error_description || details?.message || "PayPal API error";
+                return res.status(e.statusCode || 500).json({ error: message, details });
+            }
+            return res.status(500).json({ error: e?.message ?? "Internal error" });
+        }
+    });
+    app.post("/paypal/capture-order", async (req, res) => {
+        try {
+            const body = req.body || {};
+            const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+            if (!orderId) return res.status(400).json({ error: "Missing orderId" });
+            const { ordersController } = getPaypalOrdersController();
+            const collect = { id: orderId, prefer: "return=minimal" };
+            const { result } = await ordersController.captureOrder(collect);
+            return res.status(200).json({ id: result.id, status: result.status });
+        } catch (e) {
+            const paypal = paypalSdk;
+            if (paypal?.ApiError && e instanceof paypal.ApiError) {
+                const details = e.result;
+                const message = e.message || details?.error_description || details?.message || "PayPal API error";
+                return res.status(e.statusCode || 500).json({ error: message, details });
+            }
+            return res.status(500).json({ error: e?.message ?? "Internal error" });
+        }
+    });
     const port = Number(process.env.PORT) || 3000;
     const host = typeof process.env.HOST === "string" && process.env.HOST.trim() ? process.env.HOST.trim() : "0.0.0.0";
     const server = app.listen(port, host, () => {
