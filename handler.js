@@ -98,7 +98,14 @@ if (require.main === module) {
         });
     });
     const port = Number(process.env.PORT) || 3000;
-    app.listen(port, () => {
-        console.log(`server listening on port ${port}`);
+    const host = typeof process.env.HOST === "string" && process.env.HOST.trim() ? process.env.HOST.trim() : "0.0.0.0";
+    const server = app.listen(port, host, () => {
+        console.log(`server listening on http://${host}:${port}`);
     });
+    const shutdown = () => {
+        server.close(() => process.exit(0));
+        setTimeout(() => process.exit(0), 5000).unref();
+    };
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
 }
