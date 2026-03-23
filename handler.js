@@ -83,7 +83,16 @@ module.exports = async ({ req, res, log, error }) => {
         }
 
         if (typeof paymentMethodId !== "string" || !paymentMethodId.trim()) {
-            return res.json({ error: "Missing payment method (expected pm_... or token)" }, 400);
+            const intent = await stripe.paymentIntents.create({
+                amount: price,
+                currency,
+                payment_method_types: ["card"],
+                receipt_email: typeof body.receipt_email === "string" && body.receipt_email.trim() ? body.receipt_email.trim() : undefined,
+            }, requestOptions);
+            if (typeof log === "function") {
+                log(`Created PaymentIntent ${intent.id} (no payment_method)`);
+            }
+            return res.json({ secret: intent.client_secret });
         }
         if (!isProbablyPaymentMethodId(paymentMethodId)) {
             return res.json({ error: "Invalid payment method (expected pm_... or token)" }, 400);
