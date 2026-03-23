@@ -74,3 +74,31 @@ module.exports = async ({ req, res, log, error }) => {
         return res.json({ error: "Internal error" }, 500);
     }
 };
+
+if (require.main === module) {
+    const express = require("express");
+    const app = express();
+    app.use(express.json({
+        verify: (req, _res, buf) => {
+            try { req.bodyRaw = buf?.toString(); } catch (_) {}
+        }
+    }));
+    const wrapRes = (res) => ({
+        json: (obj, status) => {
+            if (status) res.status(status);
+            res.json(obj);
+        }
+    });
+    app.post("/intent", async (req, res) => {
+        await module.exports({
+            req,
+            res: wrapRes(res),
+            log: console.log,
+            error: console.error
+        });
+    });
+    const port = Number(process.env.PORT) || 3000;
+    app.listen(port, () => {
+        console.log(`server listening on port ${port}`);
+    });
+}

@@ -4,10 +4,12 @@
   "description": "",
   "main": "handler.js",
   "scripts": {
-    "test": "echo Error"
+    "test": "echo Error",
+    "start": "node handler.js"
   },
   "dependencies": {
-    "stripe": "^20.4.1"
+    "stripe": "^20.4.1",
+    "express": "^4.19.2"
   },
   "keywords": [],
   "author": "",
