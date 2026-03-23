@@ -7,7 +7,7 @@
     "test": "echo Error"
   },
   "dependencies": {
-    "stripe": "^8.128.0"
+    "stripe": "^20.4.1"
   },
   "keywords": [],
   "author": "",
