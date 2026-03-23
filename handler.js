@@ -89,14 +89,20 @@ if (require.main === module) {
             res.json(obj);
         }
     });
-    app.post("/intent", async (req, res) => {
+    const callHandler = async (req, res) => {
         await module.exports({
             req,
             res: wrapRes(res),
             log: console.log,
             error: console.error
         });
+    };
+    app.get("/", (_req, res) => res.status(200).json({ ok: true }));
+    app.get("/create-payment-intent", (_req, res) => {
+        res.status(200).json({ error: "Use POST /create-payment-intent" });
     });
+    app.post("/create-payment-intent", callHandler);
+    app.post("/intent", callHandler);
     const port = Number(process.env.PORT) || 3000;
     const host = typeof process.env.HOST === "string" && process.env.HOST.trim() ? process.env.HOST.trim() : "0.0.0.0";
     const server = app.listen(port, host, () => {
