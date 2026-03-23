@@ -25,10 +25,43 @@ function parseJsonBody(req) {
     }
 }
 
+function getStripeAccount(body) {
+    const candidate = typeof body?.stripeAccount === "string" ? body.stripeAccount : process.env.STRIPE_ACCOUNT;
+    if (typeof candidate !== "string") return undefined;
+    const trimmed = candidate.trim();
+    if (!trimmed) return undefined;
+    return trimmed;
+}
+
+function extractPaymentMethodId(body) {
+    const direct =
+        body?.paymentMethodId ??
+        body?.payment_method ??
+        body?.paymentMethod ??
+        body?.payment_method_id;
+
+    if (direct && typeof direct === "object" && typeof direct.id === "string") {
+        return direct.id;
+    }
+
+    if (typeof direct === "string") return direct;
+    return undefined;
+}
+
+function isProbablyPaymentMethodId(value) {
+    if (typeof value !== "string") return false;
+    const v = value.trim();
+    if (!v) return false;
+    if (v === "card") return false;
+    return /^pm_/.test(v) || /^card_/.test(v);
+}
+
 module.exports = async ({ req, res, log, error }) => {
     try {
         const body = parseJsonBody(req);
         const stripe = getStripe();
+        const stripeAccount = getStripeAccount(body);
+        const requestOptions = stripeAccount ? { stripeAccount } : undefined;
 
         const amount = Number(body.amount);
         if (!Number.isFinite(amount) || amount <= 0) {
@@ -38,19 +71,22 @@ module.exports = async ({ req, res, log, error }) => {
         const price = Math.round(amount * 100);
         const currency = typeof body.currency === "string" && body.currency.trim() ? body.currency.trim().toLowerCase() : "eur";
 
-        let paymentMethodId = typeof body.paymentMethod === "string" ? body.paymentMethod : undefined;
+        let paymentMethodId = extractPaymentMethodId(body);
         const token = typeof body.token === "string" ? body.token.trim() : "";
 
         if (token) {
             const created = await stripe.paymentMethods.create({
                 type: "card",
                 card: { token },
-            });
+            }, requestOptions);
             paymentMethodId = created.id;
         }
 
         if (typeof paymentMethodId !== "string" || !paymentMethodId.trim()) {
-            return res.json({ error: "Missing payment method" }, 400);
+            return res.json({ error: "Missing payment method (expected pm_... or token)" }, 400);
+        }
+        if (!isProbablyPaymentMethodId(paymentMethodId)) {
+            return res.json({ error: "Invalid payment method (expected pm_... or token)" }, 400);
         }
 
         const intent = await stripe.paymentIntents.create({
@@ -59,7 +95,7 @@ module.exports = async ({ req, res, log, error }) => {
             currency,
             payment_method_types: ["card"],
             receipt_email: typeof body.receipt_email === "string" && body.receipt_email.trim() ? body.receipt_email.trim() : undefined,
-        });
+        }, requestOptions);
 
         if (typeof log === "function") {
             log(`Created PaymentIntent ${intent.id}`);
